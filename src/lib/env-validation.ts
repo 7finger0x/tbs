@@ -141,7 +141,7 @@ export function getOptionalEnv(key: string, defaultValue: string = ''): string {
  * During Vercel/Next.js builds, environment variables are not always available
  * during the "Collecting page data" phase, so we skip validation then.
  */
-function isBuildContext(): boolean {
+export function isBuildContext(): boolean {
   // During Next.js build, NEXT_PHASE is set to 'phase-production-build'
   if (process.env.NEXT_PHASE === 'phase-production-build') {
     return true;
@@ -194,16 +194,5 @@ export function validateEnvironmentOnStartup(): void {
       console.warn(`  ${warning}\n`);
     });
     console.warn('Some features may not work without these variables.\n');
-  }
-}
-
-// Auto-validate on module import (server-side only)
-if (typeof window === 'undefined') {
-  try {
-    validateEnvironmentOnStartup();
-  } catch (error) {
-    // Log but don't crash during build/dev if validation fails
-    // The actual error will be thrown when the app tries to use invalid env vars
-    console.warn('Environment validation warning:', error);
   }
 }

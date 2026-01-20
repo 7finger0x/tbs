@@ -16,10 +16,29 @@ export async function getReputationAction(
     const validatedAddress = addressSchema.parse(address);
     const normalized = normalizeAddress(validatedAddress as Address);
 
-    // Get or create user
+    // Get or create user (gracefully handle database connection errors)
     let user = await getUserByAddress(normalized);
     if (!user) {
-      user = await createUser(normalized);
+      try {
+        user = await createUser(normalized);
+      } catch (error) {
+        // If database is unavailable, calculate reputation without persistence
+        if (error instanceof Error && error.message.includes('Database unavailable')) {
+          console.warn('Database unavailable, calculating reputation without persistence');
+          
+          // Calculate reputation with empty linked wallets
+          const reputationData = await calculateReputation({
+            address: normalized,
+            linkedWallets: [],
+          });
+
+          return {
+            success: true,
+            data: reputationData,
+          };
+        }
+        throw error;
+      }
     }
 
     // Get linked wallets
@@ -31,8 +50,17 @@ export async function getReputationAction(
       linkedWallets,
     });
 
-    // Persist to database
-    await upsertReputation(user.id, reputationData);
+    // Persist to database (gracefully handle connection errors)
+    try {
+      await upsertReputation(user.id, reputationData);
+    } catch (error) {
+      // Log but don't fail if database is unavailable
+      if (error instanceof Error && error.message.includes('Can\'t reach database server')) {
+        console.warn('Database unavailable, reputation calculated but not persisted');
+      } else {
+        throw error;
+      }
+    }
 
     return {
       success: true,

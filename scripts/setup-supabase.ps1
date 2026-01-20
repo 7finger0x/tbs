@@ -1,16 +1,31 @@
 # Supabase Connection Setup Script
 # This script helps configure the DATABASE_URL for Supabase
+# Password should be provided via parameter or environment variable
+# For security, do not hardcode passwords in scripts
+
+param(
+    [string]$Password = $null
+)
 
 $projectRef = "solxqaovtrjivudxecqi"
-# Password should be provided via environment variable or user input
-# For security, do not hardcode passwords in scripts
-$password = $env:SUPABASE_PASSWORD
-if (-not $password) {
-    Write-Host "ERROR: SUPABASE_PASSWORD environment variable not set" -ForegroundColor Red
-    Write-Host "Please set it with: `$env:SUPABASE_PASSWORD = 'your-password'" -ForegroundColor Yellow
+
+# Try to get password from parameter or env var
+if (-not $Password) {
+    $Password = $env:SUPABASE_PASSWORD
+}
+
+if (-not $Password) {
+    Write-Host "ERROR: Password not provided" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Usage options:" -ForegroundColor Yellow
+    Write-Host "  1. As parameter: powershell scripts/setup-supabase.ps1 -Password 'your-password'" -ForegroundColor Cyan
+    Write-Host "  2. Via env var: `$env:SUPABASE_PASSWORD = 'your-password'; powershell scripts/setup-supabase.ps1" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Note: Use single quotes around password if it contains special characters:" -ForegroundColor Yellow
+    Write-Host "  `$env:SUPABASE_PASSWORD = 'Wyatt505`$&@827`$&@'" -ForegroundColor Cyan
     exit 1
 }
-$encodedPassword = [System.Uri]::EscapeDataString($password)
+$encodedPassword = [System.Uri]::EscapeDataString($Password)
 
 # Direct connection (for migrations)
 $directConnection = "postgresql://postgres:$encodedPassword@db.$projectRef.supabase.co:5432/postgres"

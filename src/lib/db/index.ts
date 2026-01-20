@@ -1,6 +1,6 @@
 import 'server-only';
 import { PrismaClient } from '@prisma/client';
-import { validateEnvironmentOnStartup, getRequiredEnv } from '@/lib/env-validation';
+import { validateEnvironmentOnStartup, isBuildContext } from '@/lib/env-validation';
 
 // Validate environment variables on module load (skips during build)
 validateEnvironmentOnStartup();
@@ -17,9 +17,7 @@ function createPrismaClient() {
   
   if (!databaseUrl || databaseUrl.trim() === '') {
     // Check if we're in a build context
-    const isBuild = 
-      process.env.NEXT_PHASE === 'phase-production-build' ||
-      (process.env.VERCEL === '1' && (!databaseUrl || databaseUrl.trim() === ''));
+    const isBuild = isBuildContext();
     
     if (!isBuild) {
       // Runtime but no DATABASE_URL - this is a real error

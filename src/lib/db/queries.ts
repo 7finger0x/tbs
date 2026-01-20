@@ -5,25 +5,43 @@ import { normalizeAddress } from '@/lib/utils';
 import type { ReputationData } from '@/types/reputation';
 
 export async function getUserByAddress(address: Address) {
-  return prisma.user.findUnique({
-    where: { primaryAddress: normalizeAddress(address) },
-    include: {
-      wallets: true,
-      reputation: true,
-    },
-  });
+  try {
+    return await prisma.user.findUnique({
+      where: { primaryAddress: normalizeAddress(address) },
+      include: {
+        wallets: true,
+        reputation: true,
+      },
+    });
+  } catch (error) {
+    // Handle database connection errors gracefully
+    if (error instanceof Error && error.message.includes('Can\'t reach database server')) {
+      console.warn('Database connection error:', error.message);
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function createUser(address: Address) {
-  return prisma.user.create({
-    data: {
-      primaryAddress: normalizeAddress(address),
-    },
-    include: {
-      wallets: true,
-      reputation: true,
-    },
-  });
+  try {
+    return await prisma.user.create({
+      data: {
+        primaryAddress: normalizeAddress(address),
+      },
+      include: {
+        wallets: true,
+        reputation: true,
+      },
+    });
+  } catch (error) {
+    // Handle database connection errors gracefully
+    if (error instanceof Error && error.message.includes('Can\'t reach database server')) {
+      console.warn('Database connection error:', error.message);
+      throw new Error('Database unavailable. Please check your connection settings.');
+    }
+    throw error;
+  }
 }
 
 export async function linkWallet(userId: string, address: Address, signature: string) {
