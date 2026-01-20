@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"C:\\\\Users\\\\brand\\\\.claude-worktrees\\\\tbs\\\\lucid-lehmann\" log --oneline -20)",
+      "Bash(git -C \"C:\\\\Users\\\\brand\\\\.claude-worktrees\\\\tbs\\\\lucid-lehmann\" diff --name-only HEAD~5)",
+      "Bash(git -C \"C:\\\\Users\\\\brand\\\\.claude-worktrees\\\\tbs\\\\lucid-lehmann\" log --all --oneline --grep=\"fix\\\\|Fix\")",
+      "Bash(npm test:*)",
+      "Bash(npm install)",
+      "Bash(git add:*)"
+    ]
+  }
+}

@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import { resolve } from 'path';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [],
@@ -11,6 +12,9 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    env: {
+      DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
