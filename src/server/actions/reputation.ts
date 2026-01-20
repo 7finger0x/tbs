@@ -55,8 +55,18 @@ export async function getReputationAction(
       await upsertReputation(user.id, reputationData);
     } catch (error) {
       // Log but don't fail if database is unavailable
-      if (error instanceof Error && error.message.includes('Can\'t reach database server')) {
-        console.warn('Database unavailable, reputation calculated but not persisted');
+      if (error instanceof Error) {
+        const errorMessage = error.message.toLowerCase();
+        if (
+          errorMessage.includes('can\'t reach database server') ||
+          errorMessage.includes('authentication failed') ||
+          errorMessage.includes('database credentials') ||
+          errorMessage.includes('connection')
+        ) {
+          console.warn('Database unavailable, reputation calculated but not persisted');
+        } else {
+          throw error;
+        }
       } else {
         throw error;
       }
@@ -67,10 +77,15 @@ export async function getReputationAction(
       data: reputationData,
     };
   } catch (error) {
-    console.error('Error calculating reputation:', error);
+    // Safely log error (handle null/undefined)
+    if (error != null) {
+      console.error('Error calculating reputation:', error);
+    } else {
+      console.error('Error calculating reputation: Unknown error (null/undefined)');
+    }
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
+      error: error instanceof Error ? error.message : String(error ?? 'Unknown error occurred'),
     };
   }
 }
