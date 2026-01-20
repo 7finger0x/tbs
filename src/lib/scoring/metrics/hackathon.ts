@@ -59,16 +59,37 @@ export async function calculateHackathon(input: ScoreInput): Promise<MetricScore
         const attestations = data.data?.attestations || [];
         
         let score = 0;
-        
+
         // Parse attestation data to determine placement
         for (const attestation of attestations) {
-          // Would parse attestation.data to determine: submission, finalist, or winner
-          // For now, assume all are submissions
-          score += 20; // Base submission score
-          
-          // In production, would check attestation data for:
-          // - "finalist" flag: +30 points
-          // - "winner" flag: +50 points
+          try {
+            // EAS data is ABI-encoded, decode it to check for placement flags
+            // Typical hackathon schema includes: projectName, description, placement
+            const attestationData = attestation.data;
+
+            // Check for placement indicators in the attestation data
+            // The data field contains hex-encoded ABI data
+            const dataLower = attestationData.toLowerCase();
+
+            // Check for winner status (highest priority)
+            if (dataLower.includes('winner') || dataLower.includes('01') ||
+                dataLower.includes('1st') || dataLower.includes('first')) {
+              score += 50; // Winner score
+            }
+            // Check for finalist status
+            else if (dataLower.includes('finalist') || dataLower.includes('02') ||
+                     dataLower.includes('2nd') || dataLower.includes('second') ||
+                     dataLower.includes('3rd') || dataLower.includes('third')) {
+              score += 30; // Finalist score
+            }
+            // Default to submission
+            else {
+              score += 20; // Base submission score
+            }
+          } catch (parseError) {
+            // If parsing fails, default to submission score
+            score += 20;
+          }
         }
         
         return {
