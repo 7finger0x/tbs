@@ -6,11 +6,17 @@ To deploy to Vercel, you **must** configure the following environment variables 
 
 ### Required
 
-1. **DATABASE_URL** - Your Supabase PostgreSQL connection string
+1. **DATABASE_URL** - Your Supabase PostgreSQL connection string (pooled connection)
    - Go to: Vercel Dashboard → Your Project → Settings → Environment Variables
-   - Add: `DATABASE_URL` with value: `postgresql://postgres:[PASSWORD]@db.solxqaovtrjivudxecqi.supabase.co:5432/postgres`
+   - Add: `DATABASE_URL` with value: `postgresql://postgres.solxqaovtrjivudxecqi:[PASSWORD]@aws-0-us-west-2.pooler.supabase.com:6543/postgres?pgbouncer=true`
    - Replace `[PASSWORD]` with your actual password (URL-encoded)
    - Apply to: Production, Preview, Development
+
+2. **DIRECT_URL** - Direct connection for Prisma migrations
+   - Add: `DIRECT_URL` with value: `postgresql://postgres.solxqaovtrjivudxecqi:[PASSWORD]@aws-0-us-west-2.pooler.supabase.com:5432/postgres`
+   - Replace `[PASSWORD]` with your actual password (URL-encoded)
+   - Apply to: Production, Preview, Development
+   - **Note:** Required when Prisma schema includes `directUrl`
 
 ### Optional
 
@@ -48,10 +54,16 @@ The application is configured to skip environment validation during build time (
 4. Click "Save"
 5. Redeploy your application
 
-## Connection String Format
+## Connection String Formats
 
+### Pooled Connection (DATABASE_URL)
 ```
-postgresql://postgres:[PASSWORD]@db.solxqaovtrjivudxecqi.supabase.co:5432/postgres
+postgresql://postgres.solxqaovtrjivudxecqi:[PASSWORD]@aws-0-us-west-2.pooler.supabase.com:6543/postgres?pgbouncer=true
+```
+
+### Direct Connection (DIRECT_URL)
+```
+postgresql://postgres.solxqaovtrjivudxecqi:[PASSWORD]@aws-0-us-west-2.pooler.supabase.com:5432/postgres
 ```
 
 **Password Encoding:**
