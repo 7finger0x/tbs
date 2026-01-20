@@ -28,6 +28,8 @@ The following environment variables are optional but recommended for full functi
 
 The application is configured to skip environment validation during build time (for Vercel deployments). Environment variables are validated at runtime when the Prisma client is actually used.
 
+**Prisma Client Generation:** The `package.json` includes a `postinstall` script that runs `prisma generate` automatically after `npm install`. This ensures Prisma Client is generated during Vercel builds.
+
 ### Build-Time Behavior
 
 - ✅ Build will succeed even if `DATABASE_URL` is not set in Vercel during build
