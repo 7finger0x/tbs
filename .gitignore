@@ -15,8 +15,11 @@ dist
 
 # Production
 .vercel
+.env
 .env*.local
+.env.local.backup.*
 .env.production
+.env.backup.*
 
 # Debug
 npm-debug.log*
