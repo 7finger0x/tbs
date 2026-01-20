@@ -2,7 +2,14 @@
 # This script helps configure the DATABASE_URL for Supabase
 
 $projectRef = "solxqaovtrjivudxecqi"
-$password = "WYATT505827$&@"
+# Password should be provided via environment variable or user input
+# For security, do not hardcode passwords in scripts
+$password = $env:SUPABASE_PASSWORD
+if (-not $password) {
+    Write-Host "ERROR: SUPABASE_PASSWORD environment variable not set" -ForegroundColor Red
+    Write-Host "Please set it with: `$env:SUPABASE_PASSWORD = 'your-password'" -ForegroundColor Yellow
+    exit 1
+}
 $encodedPassword = [System.Uri]::EscapeDataString($password)
 
 # Direct connection (for migrations)

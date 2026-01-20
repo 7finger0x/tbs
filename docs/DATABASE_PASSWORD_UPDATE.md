@@ -2,7 +2,7 @@
 
 ## Updated Password
 
-The Supabase database password has been updated to: `WYATT505827$&@`
+The Supabase database password has been updated. (Password removed from documentation for security)
 
 ## Connection String
 
@@ -10,13 +10,15 @@ The connection string has been automatically updated in `.env.local`:
 
 **Direct Connection (for migrations):**
 ```
-postgresql://postgres:WYATT505827%24%26%40@db.solxqaovtrjivudxecqi.supabase.co:5432/postgres
+postgresql://postgres:[PASSWORD]@db.solxqaovtrjivudxecqi.supabase.co:5432/postgres
 ```
 
 **Pooled Connection (for application):**
 ```
-postgresql://postgres.solxqaovtrjivudxecqi:WYATT505827%24%26%40@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connect_timeout=15
+postgresql://postgres.solxqaovtrjivudxecqi:[PASSWORD]@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connect_timeout=15
 ```
+
+**Note:** Replace `[PASSWORD]` with your actual password (URL-encoded). Use the setup script with environment variable instead of hardcoding.
 
 ## Password Encoding
 
