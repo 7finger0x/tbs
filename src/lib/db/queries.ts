@@ -14,10 +14,18 @@ export async function getUserByAddress(address: Address) {
       },
     });
   } catch (error) {
-    // Handle database connection errors gracefully
-    if (error instanceof Error && error.message.includes('Can\'t reach database server')) {
-      console.warn('Database connection error:', error.message);
-      return null;
+    // Handle database connection/authentication errors gracefully
+    if (error instanceof Error) {
+      const errorMessage = error.message.toLowerCase();
+      if (
+        errorMessage.includes('can\'t reach database server') ||
+        errorMessage.includes('authentication failed') ||
+        errorMessage.includes('database credentials') ||
+        errorMessage.includes('connection')
+      ) {
+        console.warn('Database connection error:', error.message);
+        return null;
+      }
     }
     throw error;
   }
@@ -35,10 +43,18 @@ export async function createUser(address: Address) {
       },
     });
   } catch (error) {
-    // Handle database connection errors gracefully
-    if (error instanceof Error && error.message.includes('Can\'t reach database server')) {
-      console.warn('Database connection error:', error.message);
-      throw new Error('Database unavailable. Please check your connection settings.');
+    // Handle database connection/authentication errors gracefully
+    if (error instanceof Error) {
+      const errorMessage = error.message.toLowerCase();
+      if (
+        errorMessage.includes('can\'t reach database server') ||
+        errorMessage.includes('authentication failed') ||
+        errorMessage.includes('database credentials') ||
+        errorMessage.includes('connection')
+      ) {
+        console.warn('Database connection error:', error.message);
+        throw new Error('Database unavailable. Please check your connection settings.');
+      }
     }
     throw error;
   }
@@ -176,13 +192,14 @@ export async function upsertDefiMetrics(
   }
 ) {
   const normalizedAddress = normalizeAddress(address);
+  const protocolCategoriesJson = JSON.stringify(data.protocolCategories);
 
   return prisma.defiMetrics.upsert({
     where: { address: normalizedAddress },
     update: {
       uniqueProtocols: data.uniqueProtocols,
       vintageContracts: data.vintageContracts,
-      protocolCategories: data.protocolCategories,
+      protocolCategories: protocolCategoriesJson,
       totalInteractions: data.totalInteractions,
       gasUsedETH: data.gasUsedETH,
       volumeUSD: data.volumeUSD,
@@ -196,7 +213,7 @@ export async function upsertDefiMetrics(
       address: normalizedAddress,
       uniqueProtocols: data.uniqueProtocols,
       vintageContracts: data.vintageContracts,
-      protocolCategories: data.protocolCategories,
+      protocolCategories: protocolCategoriesJson,
       totalInteractions: data.totalInteractions,
       gasUsedETH: data.gasUsedETH,
       volumeUSD: data.volumeUSD,

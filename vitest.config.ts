@@ -3,7 +3,11 @@ import { resolve } from 'path';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [],
+  esbuild: {
+    // Avoid "React is not defined" in tests by using the automatic JSX runtime
+    jsx: 'automatic',
+  },
   test: {
     environment: 'jsdom',
     globals: true,
@@ -27,7 +31,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
-      'server-only': resolve(__dirname, './src/test/mocks/server-only.ts'),
+      // Next.js uses this marker module in server-only files; stub it for Vitest.
+      'server-only': resolve(__dirname, './src/test/stubs/server-only.ts'),
     },
   },
 });

@@ -183,17 +183,19 @@ export async function calculateReputation(input: ScoreInput): Promise<Reputation
   };
   
   // Persist economic vector to database
-  await upsertEconomicVector(input.address as Address, {
-    capitalPillar: economicVector.capitalPillar,
-    diversityPillar: economicVector.diversityPillar,
-    identityPillar: economicVector.identityPillar,
-    totalScore,
-    multiplier: finalMultiplier,
-    breakdown: enhancedBreakdown,
-  }).catch((error) => {
+  try {
+    await upsertEconomicVector(input.address as Address, {
+      capitalPillar: economicVector.capitalPillar,
+      diversityPillar: economicVector.diversityPillar,
+      identityPillar: economicVector.identityPillar,
+      totalScore,
+      multiplier: finalMultiplier,
+      breakdown: enhancedBreakdown,
+    });
+  } catch (error) {
     // Log but don't fail if persistence fails
     console.error('Failed to persist economic vector:', error);
-  });
+  }
   
   return {
     totalScore,
