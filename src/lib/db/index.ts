@@ -1,12 +1,16 @@
 import 'server-only';
-import { PrismaClient } from '@prisma/client';
 import { validateEnvironmentOnStartup, isBuildContext } from '@/lib/env-validation';
 
 // Validate environment variables on module load (skips during build)
 validateEnvironmentOnStartup();
 
+type PrismaClientLike = {
+  $connect: () => Promise<void>;
+  $disconnect: () => Promise<void>;
+};
+
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+  prisma: PrismaClientLike | undefined;
 };
 
 // Lazy validation: validate DATABASE_URL when PrismaClient is actually created
@@ -31,9 +35,19 @@ function createPrismaClient() {
     // During build, Prisma will validate when actually used at runtime
   }
 
+  // Prisma can't switch providers dynamically inside a single schema.
+  // We generate two Prisma clients:
+  // - @prisma/client-sqlite (dev: sqlite)
+  // - @prisma/client-postgres (prod: postgres/supabase)
+  const useSqlite = !!databaseUrl && databaseUrl.trim().startsWith('file:');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { PrismaClient } = useSqlite
+    ? require('@prisma/client-sqlite')
+    : require('@prisma/client-postgres');
+
   return new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  });
+  }) as PrismaClientLike;
 }
 
 export const prisma =

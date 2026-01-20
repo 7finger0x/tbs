@@ -1,14 +1,11 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../node_modules/@prisma/client-postgres"
+  output   = "../node_modules/@prisma/client-sqlite"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  // Direct connection for migrations (Prisma requires this when using connection pooling)
-  // Use the same value as DATABASE_URL if DIRECT_URL is not set
-  directUrl = env("DIRECT_URL")
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -140,3 +137,4 @@ model EconomicVector {
   @@index([calculatedAt])
   @@index([totalScore])
 }
+

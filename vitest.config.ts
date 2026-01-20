@@ -3,6 +3,10 @@ import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [],
+  esbuild: {
+    // Avoid "React is not defined" in tests by using the automatic JSX runtime
+    jsx: 'automatic',
+  },
   test: {
     environment: 'jsdom',
     globals: true,
@@ -23,6 +27,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
+      // Next.js uses this marker module in server-only files; stub it for Vitest.
+      'server-only': resolve(__dirname, './src/test/stubs/server-only.ts'),
     },
   },
 });

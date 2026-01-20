@@ -86,7 +86,14 @@ export async function calculateDefiMetrics(input: ScoreInput): Promise<MetricSco
     const vintageScore = Math.min(metrics.vintageContracts * 5, 15);
     
     // Category diversity: 5 points per category (max 25 points for 5+ categories)
-    const categoryScore = Math.min(metrics.protocolCategories.length * 5, 25);
+    const categories = (() => {
+      try {
+        return JSON.parse(metrics.protocolCategories) as string[];
+      } catch {
+        return [];
+      }
+    })();
+    const categoryScore = Math.min(categories.length * 5, 25);
     
     // Volume tier bonus: 10 points for mid tier, 20 for high tier
     const volumeBonus = metrics.capitalTier === 'high' ? 20 : metrics.capitalTier === 'mid' ? 10 : 0;
