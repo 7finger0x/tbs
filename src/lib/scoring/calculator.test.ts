@@ -54,6 +54,24 @@ vi.mock('./metrics/earlyAdopter', () => ({
   calculateEarlyAdopter: vi.fn().mockResolvedValue({ name: 'Early Adopter', score: 25, weight: 5, maxScore: 50 }),
 }));
 
+vi.mock('./metrics/defi', () => ({
+  calculateDefiMetrics: vi.fn().mockResolvedValue({ name: 'DeFi Metrics', score: 0, weight: 10, maxScore: 100 }),
+}));
+
+// Mock database queries
+vi.mock('@/lib/db/queries', () => ({
+  upsertEconomicVector: vi.fn().mockResolvedValue({}),
+}));
+
+// Mock sybil resistance
+vi.mock('@/lib/identity/sybil-resistance', () => ({
+  calculateSybilResistance: vi.fn().mockResolvedValue({
+    multiplier: 1.0,
+    factors: [],
+    breakdown: {},
+  }),
+}));
+
 describe('calculateReputation', () => {
   const mockInput: ScoreInput = {
     address: '0x1234567890123456789012345678901234567890',
@@ -62,15 +80,17 @@ describe('calculateReputation', () => {
 
   it('should calculate total score correctly', async () => {
     const result = await calculateReputation(mockInput);
-    
+
     // Sum: 100+80+50+90+150+60+40+35+25 = 630
-    expect(result.totalScore).toBe(630);
-    expect(result.metrics).toHaveLength(9);
+    // Multipliers: Early Adopter (+0.1) + Hackathon (+0.1) = 1.2
+    // Total: 630 * 1.2 = 756
+    expect(result.totalScore).toBe(756);
+    expect(result.metrics).toHaveLength(10);
   });
 
-  it('should assign RESIDENT tier for score 630', async () => {
+  it('should assign BUILDER tier for score 756', async () => {
     const result = await calculateReputation(mockInput);
-    expect(result.tier).toBe('RESIDENT');
+    expect(result.tier).toBe('BUILDER');
   });
 
   it('should return metrics array', async () => {
