@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String   @id @default(cuid())
+  primaryAddress  String   @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  wallets         Wallet[]
+  reputation      Reputation?
+  
+  @@index([primaryAddress])
+}
+
+model Wallet {
+  id              String   @id @default(cuid())
+  address         String   @unique
+  userId          String
+  linkedAt        DateTime @default(now())
+  signature       String   // EIP-712 signature
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([address])
+}
+
+model Reputation {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  totalScore      Int      @default(0)
+  tier            String   @default("TOURIST")
+  
+  // Metric Scores
+  baseTenureScore       Int @default(0)
+  zoraMintsScore        Int @default(0)
+  timelinessScore       Int @default(0)
+  farcasterScore        Int @default(0)
+  builderScore          Int @default(0)
+  creatorScore          Int @default(0)
+  onchainSummerScore    Int @default(0)
+  hackathonScore        Int @default(0)
+  earlyAdopterScore     Int @default(0)
+  
+  lastCalculated  DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([totalScore])
+  @@index([tier])
+}
+
+model MetricsCache {
+  id              String   @id @default(cuid())
+  address         String   @unique
+  metricType      String
+  data            String   // JSON stringified
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+  
+  @@index([address, metricType])
+  @@index([expiresAt])
+}
+
+model TransactionCache {
+  id                String   @id @default(cuid())
+  address           String   @unique
+  firstTxTimestamp  Int
+  transactionCount  Int
+  lastBlockNumber   BigInt?
+  cachedAt          DateTime @default(now())
+  expiresAt         DateTime
+  
+  @@index([address])
+  @@index([expiresAt])
+}
+
+model TransactionRecord {
+  id            String   @id @default(cuid())
+  address       String
+  txHash        String
+  timestamp     Int
+  gasUsed       String   // BigInt stored as string
+  gasPrice      String   // BigInt stored as string
+  to            String?
+  value         String   // BigInt stored as string
+  blockNumber   BigInt?
+  cachedAt      DateTime @default(now())
+  
+  @@index([address])
+  @@index([txHash])
+  @@index([timestamp])
+  @@index([address, timestamp])
+}
+
+model DefiMetrics {
+  id                  String   @id @default(cuid())
+  address             String   @unique
+  uniqueProtocols     Int      @default(0)
+  vintageContracts    Int      @default(0)
+  protocolCategories  String[] // Array of category strings
+  totalInteractions   Int      @default(0)
+  gasUsedETH          Float    @default(0)
+  volumeUSD           Float    @default(0)
+  liquidityDurationDays Int    @default(0)
+  liquidityPositions  Int      @default(0)
+  lendingUtilization  Int      @default(0)
+  capitalTier         String   // 'low' | 'mid' | 'high'
+  lastUpdated         DateTime @default(now())
+  
+  @@index([address])
+  @@index([lastUpdated])
+}
+
+model EconomicVector {
+  id              String   @id @default(cuid())
+  address         String   @unique
+  capitalPillar   Float    @default(0)
+  diversityPillar Float    @default(0)
+  identityPillar  Float    @default(0)
+  totalScore      Float    @default(0)
+  multiplier      Float    @default(1.0)
+  breakdown       String   // JSON string of breakdown
+  calculatedAt    DateTime @default(now())
+  
+  @@index([address])
+  @@index([calculatedAt])
+  @@index([totalScore])
+}
