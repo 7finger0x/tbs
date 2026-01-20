@@ -39,12 +39,16 @@ Create a `.env.local` file in the root directory. Copy `.env.example` as a templ
 DATABASE_URL="file:./dev.db"
 
 # Production: PostgreSQL connection string (Supabase)
-# Example: postgresql://postgres:password@db.projectref.supabase.co:5432/postgres
-# Note: URL-encode special characters in password ($ → %24, & → %26, @ → %40)
+# Connection pooling (recommended for application):
+# DATABASE_URL="postgresql://postgres.solxqaovtrjivudxecqi:[PASSWORD]@aws-0-us-west-2.pooler.supabase.com:6543/postgres?pgbouncer=true"
 # 
+# Direct connection (for migrations):
+# DIRECT_URL="postgresql://postgres.solxqaovtrjivudxecqi:[PASSWORD]@aws-0-us-west-2.pooler.supabase.com:5432/postgres"
+# 
+# Note: URL-encode special characters in password ($ → %24, & → %26, @ → %40)
 # For this project's Supabase instance:
 # Project: solxqaovtrjivudxecqi
-# Run: powershell scripts/setup-supabase.ps1 (automatically configures connection)
+# Run: powershell scripts/setup-supabase.ps1 (automatically configures both connection strings)
 ```
 
 #### Optional Variables
