@@ -91,6 +91,10 @@ describe('Database Queries', () => {
         data: {
           primaryAddress: normalizedAddress,
         },
+        include: {
+          wallets: true,
+          reputation: true,
+        },
       });
     });
   });

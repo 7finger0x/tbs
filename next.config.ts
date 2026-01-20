@@ -14,10 +14,22 @@ const nextConfig: NextConfig = {
         net: false,
         tls: false,
       };
+      
+      // Ignore React Native imports from MetaMask SDK
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        '@react-native-async-storage/async-storage': false,
+      };
     }
     
     // External dependencies that shouldn't be bundled
     config.externals.push('pino-pretty', 'lokijs', 'encoding');
+    
+    // Ignore warnings about React Native imports (MetaMask SDK)
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings || []),
+      /Can't resolve '@react-native-async-storage\/async-storage'/,
+    ];
     
     return config;
   },

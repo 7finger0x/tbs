@@ -137,11 +137,43 @@ export function getOptionalEnv(key: string, defaultValue: string = ''): string {
 }
 
 /**
+ * Check if we're in a build context (where env vars may not be available)
+ * During Vercel/Next.js builds, environment variables are not always available
+ * during the "Collecting page data" phase, so we skip validation then.
+ */
+export function isBuildContext(): boolean {
+  // During Next.js build, NEXT_PHASE is set to 'phase-production-build'
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return true;
+  }
+  
+  // Vercel sets VERCEL=1 during builds and deployments
+  // During build phase on Vercel, DATABASE_URL may not be available yet
+  // We check if we're on Vercel and DATABASE_URL is missing/empty
+  if (process.env.VERCEL === '1') {
+    const dbUrl = process.env.DATABASE_URL;
+    // If DATABASE_URL is missing or empty, we're likely in build phase
+    // (at runtime, Vercel will have the env var set)
+    if (!dbUrl || dbUrl.trim() === '') {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
  * Validate and log environment on module load (server-side only)
+ * Skips validation during build time to allow Vercel deployments
  */
 export function validateEnvironmentOnStartup(): void {
   // Only validate on server
   if (typeof window !== 'undefined') {
+    return;
+  }
+
+  // Skip validation during build - env vars will be validated at runtime
+  if (isBuildContext()) {
     return;
   }
 
@@ -162,16 +194,5 @@ export function validateEnvironmentOnStartup(): void {
       console.warn(`  ${warning}\n`);
     });
     console.warn('Some features may not work without these variables.\n');
-  }
-}
-
-// Auto-validate on module import (server-side only)
-if (typeof window === 'undefined') {
-  try {
-    validateEnvironmentOnStartup();
-  } catch (error) {
-    // Log but don't crash during build/dev if validation fails
-    // The actual error will be thrown when the app tries to use invalid env vars
-    console.warn('Environment validation warning:', error);
   }
 }

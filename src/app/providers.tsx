@@ -1,5 +1,8 @@
 'use client';
 
+// Import crypto polyfill before OnchainKit
+import '@/lib/polyfills/crypto';
+
 import { OnchainKitProvider } from '@coinbase/onchainkit';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';

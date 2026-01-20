@@ -7,17 +7,7 @@ import { normalizeAddress } from '@/lib/utils';
 /**
  * Transaction Volume Analysis
  * Analyzes transaction history to calculate volume, DeFi participation, and capital deployment
- * 
- * ⚠️ CURRENT LIMITATION: This implementation uses estimates based on transaction count
- * rather than scanning actual transaction values. This is a known architectural gap.
- * 
- * TODO: Replace with actual RPC transaction scanning or indexer integration (e.g., Ponder)
- * - Scan actual transaction values from blockchain
- * - Track real protocol interactions by analyzing 'to' addresses
- * - Calculate accurate gas usage and capital deployment
- * 
- * Impact: Current estimation accuracy is ~60-70%. Real scanning would improve to ~95%+.
- * Priority: Medium - Acceptable for MVP, but should be upgraded for production.
+ * Uses BaseScan API for accurate transaction data when available, falls back to estimates
  */
 
 export interface TransactionAnalysis {
@@ -30,6 +20,73 @@ export interface TransactionAnalysis {
   gasUsedETH: number;
   capitalDeployed: number; // Total value locked in protocols
   transactionCount: number;
+}
+
+/**
+ * Fetch actual transaction data from BaseScan API
+ */
+async function fetchActualTransactions(address: Address): Promise<{
+  transactions: any[];
+  totalVolumeETH: number;
+  gasUsedETH: number;
+  protocolInteractions: Map<string, number>;
+} | null> {
+  try {
+    const basescanApiKey = process.env.BASESCAN_API_KEY;
+
+    if (!basescanApiKey) {
+      return null; // Fall back to estimation
+    }
+
+    // Fetch normal transactions
+    const txUrl = `https://api.basescan.org/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&sort=desc&apikey=${basescanApiKey}`;
+
+    const response = await fetch(txUrl, { next: { revalidate: 3600 } }); // Cache for 1 hour
+    const data = await response.json();
+
+    if (data.status !== '1' || !data.result) {
+      return null;
+    }
+
+    const transactions = data.result;
+    let totalVolumeWei = 0n;
+    let totalGasUsedWei = 0n;
+    const protocolInteractions = new Map<string, number>();
+
+    // Process transactions to calculate actual values
+    for (const tx of transactions) {
+      // Calculate volume (only count outgoing transactions from this address)
+      if (tx.from.toLowerCase() === address.toLowerCase()) {
+        const value = BigInt(tx.value || 0);
+        totalVolumeWei += value;
+
+        // Track gas used
+        const gasUsed = BigInt(tx.gasUsed || 0);
+        const gasPrice = BigInt(tx.gasPrice || 0);
+        totalGasUsedWei += gasUsed * gasPrice;
+
+        // Track protocol interactions
+        const toAddress = tx.to?.toLowerCase();
+        if (toAddress && PROTOCOL_ADDRESSES[toAddress]) {
+          const currentCount = protocolInteractions.get(toAddress) || 0;
+          protocolInteractions.set(toAddress, currentCount + 1);
+        }
+      }
+    }
+
+    // Convert Wei to ETH (1 ETH = 10^18 Wei)
+    const totalVolumeETH = Number(totalVolumeWei) / 1e18;
+    const gasUsedETH = Number(totalGasUsedWei) / 1e18;
+
+    return {
+      transactions,
+      totalVolumeETH,
+      gasUsedETH,
+      protocolInteractions,
+    };
+  } catch (error) {
+    return null; // Fall back to estimation on error
+  }
 }
 
 /**
@@ -58,10 +115,10 @@ const PROTOCOL_ADDRESSES: Record<string, { name: string; category: string; deplo
 export async function analyzeTransactions(address: Address): Promise<TransactionAnalysis> {
   const normalizedAddress = normalizeAddress(address);
   const client = createBaseClient();
-  
+
   // Check cache first
   const cached = await getTransactionCache(normalizedAddress);
-  
+
   // Initialize analysis
   const analysis: TransactionAnalysis = {
     totalVolumeETH: 0,
@@ -74,25 +131,10 @@ export async function analyzeTransactions(address: Address): Promise<Transaction
     capitalDeployed: 0,
     transactionCount: cached?.transactionCount || 0,
   };
-  
-  // If we have cached data, use it as baseline
-  // For full analysis, we'd need to scan transactions
-  // This is a simplified version that estimates from transaction count
-  
-  // Improved volume estimation based on transaction count
-  // Uses tiered approach: more transactions = higher average value
-  let avgTxValueETH = 0.005; // Base average
-  
-  if (analysis.transactionCount > 1000) {
-    avgTxValueETH = 0.05; // High activity users likely have larger transactions
-  } else if (analysis.transactionCount > 500) {
-    avgTxValueETH = 0.02;
-  } else if (analysis.transactionCount > 100) {
-    avgTxValueETH = 0.01;
-  } else if (analysis.transactionCount > 50) {
-    avgTxValueETH = 0.008;
-  }
-  
+
+  // Try to fetch actual transaction data from BaseScan API
+  const actualData = await fetchActualTransactions(normalizedAddress);
+
   // Fetch ETH price (with fallback)
   let estimatedETHPrice = 2500; // Default fallback
   try {
@@ -101,68 +143,101 @@ export async function analyzeTransactions(address: Address): Promise<Transaction
   } catch {
     // Use fallback
   }
-  
-  analysis.totalVolumeETH = analysis.transactionCount * avgTxValueETH;
-  analysis.totalVolumeUSD = analysis.totalVolumeETH * estimatedETHPrice;
-  
-  // Estimate DeFi volume (higher percentage for active users)
-  // Active DeFi users typically have 40-60% DeFi transactions
-  const defiPercentage = analysis.transactionCount > 100 ? 0.5 : 0.3;
-  analysis.defiVolumeUSD = analysis.totalVolumeUSD * defiPercentage;
-  
-  // Estimate gas used (varies by transaction type)
-  // DeFi transactions use more gas, simple transfers use less
-  const avgGasPerTx = analysis.transactionCount > 100 ? 0.002 : 0.001;
-  analysis.gasUsedETH = analysis.transactionCount * avgGasPerTx;
-  
-  // For protocol detection, we'd need to scan transaction 'to' addresses
-  // This is a placeholder - in production, use an indexer or scan blocks
-  const protocolAddresses = Object.keys(PROTOCOL_ADDRESSES);
-  const now = Math.floor(Date.now() / 1000);
-  const oneYearAgo = now - 31536000;
-  
-  // Improved protocol interaction estimation
-  // More transactions = higher likelihood of protocol interactions
-  // Use probabilistic approach based on transaction count
-  
-  if (analysis.transactionCount > 0) {
-    // Estimate number of unique protocols interacted with
-    // Formula: log(transactionCount) * 2 (capped at available protocols)
-    const estimatedProtocolCount = Math.min(
-      protocolAddresses.length,
-      Math.max(1, Math.floor(Math.log10(analysis.transactionCount + 1) * 2))
-    );
-    
-    // Select protocols probabilistically (prefer older/vintage protocols for active users)
-    const protocolList = Object.entries(PROTOCOL_ADDRESSES);
-    const selectedProtocols = protocolList
-      .sort((a, b) => {
-        // Prefer vintage protocols for users with many transactions
-        if (analysis.transactionCount > 100) {
-          return a[1].deployedAt - b[1].deployedAt; // Older first
+
+  if (actualData) {
+    // Use actual transaction data
+    analysis.transactionCount = actualData.transactions.length;
+    analysis.totalVolumeETH = actualData.totalVolumeETH;
+    analysis.totalVolumeUSD = actualData.totalVolumeETH * estimatedETHPrice;
+    analysis.gasUsedETH = actualData.gasUsedETH;
+
+    // Process protocol interactions
+    const now = Math.floor(Date.now() / 1000);
+    const oneYearAgo = now - 31536000;
+
+    for (const [protocolAddr, interactionCount] of actualData.protocolInteractions) {
+      const protocol = PROTOCOL_ADDRESSES[protocolAddr];
+      if (protocol) {
+        analysis.uniqueProtocols.add(protocolAddr);
+        analysis.protocolCategories.add(protocol.category);
+
+        // Check if vintage (deployed >1 year ago)
+        if (protocol.deployedAt < oneYearAgo) {
+          analysis.vintageContracts++;
         }
-        return Math.random() - 0.5; // Random for less active users
-      })
-      .slice(0, estimatedProtocolCount);
-    
-    for (const [protocolAddr, protocol] of selectedProtocols) {
-      analysis.uniqueProtocols.add(protocolAddr);
-      analysis.protocolCategories.add(protocol.category);
-      
-      // Check if vintage (deployed >1 year ago)
-      if (protocol.deployedAt < oneYearAgo) {
-        analysis.vintageContracts++;
       }
     }
-    
+
+    // Calculate DeFi volume from actual protocol interactions
+    const defiTransactions = Array.from(actualData.protocolInteractions.values()).reduce((sum, count) => sum + count, 0);
+    const defiPercentage = analysis.transactionCount > 0 ? defiTransactions / analysis.transactionCount : 0;
+    analysis.defiVolumeUSD = analysis.totalVolumeUSD * defiPercentage;
+
     // Estimate capital deployed (for DeFi users)
-    // Assume 10-30% of volume is locked in protocols
     if (analysis.defiVolumeUSD > 0) {
-      const capitalDeploymentRatio = analysis.transactionCount > 200 ? 0.3 : 0.15;
+      const capitalDeploymentRatio = defiPercentage > 0.5 ? 0.3 : 0.15;
       analysis.capitalDeployed = analysis.defiVolumeUSD * capitalDeploymentRatio;
     }
+  } else {
+    // Fall back to estimation if API is unavailable
+    let avgTxValueETH = 0.005; // Base average
+
+    if (analysis.transactionCount > 1000) {
+      avgTxValueETH = 0.05;
+    } else if (analysis.transactionCount > 500) {
+      avgTxValueETH = 0.02;
+    } else if (analysis.transactionCount > 100) {
+      avgTxValueETH = 0.01;
+    } else if (analysis.transactionCount > 50) {
+      avgTxValueETH = 0.008;
+    }
+
+    analysis.totalVolumeETH = analysis.transactionCount * avgTxValueETH;
+    analysis.totalVolumeUSD = analysis.totalVolumeETH * estimatedETHPrice;
+
+    const defiPercentage = analysis.transactionCount > 100 ? 0.5 : 0.3;
+    analysis.defiVolumeUSD = analysis.totalVolumeUSD * defiPercentage;
+
+    const avgGasPerTx = analysis.transactionCount > 100 ? 0.002 : 0.001;
+    analysis.gasUsedETH = analysis.transactionCount * avgGasPerTx;
+
+    // Estimate protocol interactions
+    const protocolAddresses = Object.keys(PROTOCOL_ADDRESSES);
+    const now = Math.floor(Date.now() / 1000);
+    const oneYearAgo = now - 31536000;
+
+    if (analysis.transactionCount > 0) {
+      const estimatedProtocolCount = Math.min(
+        protocolAddresses.length,
+        Math.max(1, Math.floor(Math.log10(analysis.transactionCount + 1) * 2))
+      );
+
+      const protocolList = Object.entries(PROTOCOL_ADDRESSES);
+      const selectedProtocols = protocolList
+        .sort((a, b) => {
+          if (analysis.transactionCount > 100) {
+            return a[1].deployedAt - b[1].deployedAt;
+          }
+          return Math.random() - 0.5;
+        })
+        .slice(0, estimatedProtocolCount);
+
+      for (const [protocolAddr, protocol] of selectedProtocols) {
+        analysis.uniqueProtocols.add(protocolAddr);
+        analysis.protocolCategories.add(protocol.category);
+
+        if (protocol.deployedAt < oneYearAgo) {
+          analysis.vintageContracts++;
+        }
+      }
+
+      if (analysis.defiVolumeUSD > 0) {
+        const capitalDeploymentRatio = analysis.transactionCount > 200 ? 0.3 : 0.15;
+        analysis.capitalDeployed = analysis.defiVolumeUSD * capitalDeploymentRatio;
+      }
+    }
   }
-  
+
   return analysis;
 }
 

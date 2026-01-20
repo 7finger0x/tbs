@@ -39,12 +39,16 @@ Create a `.env.local` file in the root directory. Copy `.env.example` as a templ
 DATABASE_URL="file:./dev.db"
 
 # Production: PostgreSQL connection string (Supabase)
-# Example: postgresql://postgres:password@db.projectref.supabase.co:5432/postgres
-# Note: URL-encode special characters in password ($ → %24, & → %26, @ → %40)
+# Connection pooling (recommended for application):
+# DATABASE_URL="postgresql://postgres.solxqaovtrjivudxecqi:[PASSWORD]@aws-0-us-west-2.pooler.supabase.com:6543/postgres?pgbouncer=true"
 # 
+# Direct connection (for migrations):
+# DIRECT_URL="postgresql://postgres.solxqaovtrjivudxecqi:[PASSWORD]@aws-0-us-west-2.pooler.supabase.com:5432/postgres"
+# 
+# Note: URL-encode special characters in password ($ → %24, & → %26, @ → %40)
 # For this project's Supabase instance:
 # Project: solxqaovtrjivudxecqi
-# Run: powershell scripts/setup-supabase.ps1 (automatically configures connection)
+# Run: powershell scripts/setup-supabase.ps1 (automatically configures both connection strings)
 ```
 
 #### Optional Variables
@@ -75,13 +79,18 @@ COINBASE_ATTESTATION_SCHEMA_UID=""  # Optional: Coinbase verification
 ALLOWED_ORIGINS="*"            # Comma-separated list of allowed origins
 ```
 
-**Note:** Environment variables are validated on server startup. Missing required variables will cause the server to fail with clear error messages. Optional variables will show warnings but won't prevent startup.
+**Note:** Environment variables are validated on server startup (not during build). Missing required variables will cause the server to fail with clear error messages at runtime. Optional variables will show warnings but won't prevent startup. For Vercel deployment, see [Vercel Deployment Guide](docs/VERCEL_DEPLOYMENT.md).
 
 ### Database Setup
 
 **First-time Setup:**
 1. Configure Supabase connection:
    ```powershell
+   # Option 1: Pass password as parameter (use single quotes for special characters)
+   powershell scripts/setup-supabase.ps1 -Password 'your-password'
+   
+   # Option 2: Use environment variable (use single quotes for special characters)
+   $env:SUPABASE_PASSWORD = 'your-password'
    powershell scripts/setup-supabase.ps1
    ```
    
