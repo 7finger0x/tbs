@@ -43,10 +43,18 @@ export async function createUser(address: Address) {
       },
     });
   } catch (error) {
-    // Handle database connection errors gracefully
-    if (error instanceof Error && error.message.includes('Can\'t reach database server')) {
-      console.warn('Database connection error:', error.message);
-      throw new Error('Database unavailable. Please check your connection settings.');
+    // Handle database connection/authentication errors gracefully
+    if (error instanceof Error) {
+      const errorMessage = error.message.toLowerCase();
+      if (
+        errorMessage.includes('can\'t reach database server') ||
+        errorMessage.includes('authentication failed') ||
+        errorMessage.includes('database credentials') ||
+        errorMessage.includes('connection')
+      ) {
+        console.warn('Database connection error:', error.message);
+        throw new Error('Database unavailable. Please check your connection settings.');
+      }
     }
     throw error;
   }
